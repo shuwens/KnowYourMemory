@@ -398,7 +398,7 @@ int main(int argc, char *argv[]) {
         }
 
         // Sleep to reduce CPU usage
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
 
       // Print final statistics
@@ -523,9 +523,9 @@ int main(int argc, char *argv[]) {
       }
 
       // If we're still waiting, sleep briefly
-      if (clients_done < (int)clients.size()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      }
+      // if (clients_done < (int)clients.size()) {
+      //   std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      // }
     }
 
     if (g_running.load()) {
@@ -732,9 +732,9 @@ int main(int argc, char *argv[]) {
       }
 
       // Brief delay between messages
-      if (i % 10 == 0 && i > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      }
+      // if (i % 10 == 0 && i > 0) {
+      //   std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      // }
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
