@@ -1,4 +1,4 @@
-PREFIX = ../../..
+PREFIX = ../..
 
 CC = g++
 LDFLAGS =  -libverbs -lpthread -lrdmacm
