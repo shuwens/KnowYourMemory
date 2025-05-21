@@ -11,7 +11,6 @@
 #include <ctime>
 #include <fstream>
 #include <infiniband/verbs.h>
-#include <iomanip>
 #include <iostream>
 #include <ostream>
 #include <string>
@@ -146,167 +145,30 @@ int main(int argc, char *argv[]) {
       if (!singlercv) {
         auto conn = conn_s.value();
         conns[i] = conn;
-        auto y = [i, bw, lat, pingpong, conn, count, size, &measurements]() {
+        auto y = [i, bw, lat, conn, count, size, &measurements]() {
           set_core_affinity(i + 2);
           std::vector<float> *m = new std::vector<float>();
-
-          // Log that server is starting
-          std::cout << "Server [" << i << "] starting..." << std::endl;
-
           if (bw) {
-            // Modified approach for bandwidth test
-            std::cout << "Server [" << i << "] running bandwidth test"
-                      << std::endl;
-
-            // Use this buffer for copying and printing the message
-            char *print_buffer = new char[size];
-
-            int recvd = 0;
-            auto begin = std::chrono::high_resolution_clock::now();
-
-            while (recvd < count) {
-              // Receive message (similar to original test_bw_recv)
-              auto recv_s = conn->Receive();
-              if (!recv_s.ok()) {
-                delete[] print_buffer;
-                std::cerr << "Error receiving message: " << recv_s.status()
-                          << std::endl;
-                return 1;
-              }
-
-              // Print message info
-              std::cout << "Server [" << i << "] received message #"
-                        << recvd + 1 << std::endl;
-
-              // Try to print some bytes from the region structure itself
-              // This is a hack since we don't know the exact structure
-              const auto &region = recv_s.value();
-              const void *addr = &region;
-              const unsigned char *bytes =
-                  static_cast<const unsigned char *>(addr);
-
-              // Print a hex dump of part of the memory where the region is
-              // stored The actual message content should be somewhere in this
-              // memory
-              std::cout << "Memory dump of ReceiveRegion:" << std::endl;
-              for (int j = 0; j < 64; j++) {
-                if (j % 16 == 0) {
-                  std::cout << std::endl
-                            << std::hex << std::setw(4) << std::setfill('0')
-                            << j << ": ";
-                }
-                std::cout << std::setw(2) << std::setfill('0')
-                          << static_cast<int>(bytes[j]) << " ";
-              }
-              std::cout << std::dec << std::endl;
-
-              // Also try to print it as ASCII if it's printable
-              std::cout << "ASCII representation:" << std::endl;
-              for (int j = 0; j < 64; j++) {
-                if (j % 16 == 0) {
-                  std::cout << std::endl;
-                }
-                char c = static_cast<char>(bytes[j]);
-                if (isprint(c)) {
-                  std::cout << c;
-                } else {
-                  std::cout << ".";
-                }
-              }
-              std::cout << std::endl;
-
-              // Increment received count
-              recvd++;
-            }
-
-            auto end = std::chrono::high_resolution_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                end - begin);
-
-            uint64_t bytes = ((uint64_t)count) * ((uint64_t)size);
-            uint64_t nanos = elapsed.count();
-            uint64_t rate_bytes_per_ns = (bytes * 1000000000L) / nanos;
-
-            delete[] print_buffer;
-            m->push_back(rate_bytes_per_ns);
-          } else if (lat) {
-            // Modified approach for latency test
-            std::cout << "Server [" << i << "] running latency test"
-                      << std::endl;
-
-            for (int j = 0; j < count; j++) {
-              auto recv_s = conn->Receive();
-              if (!recv_s.ok()) {
-                std::cerr << "Error receiving message: " << recv_s.status()
-                          << std::endl;
-                return 1;
-              }
-
-              // Print message info
-              std::cout << "Server [" << i << "] received latency message #"
-                        << j + 1 << std::endl;
-
-              // Try to print some bytes from the region structure itself
-              const auto &region = recv_s.value();
-              const void *addr = &region;
-              const unsigned char *bytes =
-                  static_cast<const unsigned char *>(addr);
-
-              // Print first few bytes
-              std::cout << "First 16 bytes: ";
-              for (int k = 0; k < 16; k++) {
-                std::cout << std::hex << std::setw(2) << std::setfill('0')
-                          << static_cast<int>(bytes[k]) << " ";
-              }
-              std::cout << std::dec << std::endl;
-
-              // Send reply using the original approach from test_lat_recv
-              // This might not work exactly the same, but we'll try
-              kym::connection::SendRegion send_region;
-              auto stat = conn->Send(send_region);
-              if (!stat.ok()) {
-                std::cerr << "Error sending reply: " << stat << std::endl;
-                return 1;
-              }
-            }
-          } else if (pingpong) {
-            // Modified approach for ping-pong test
-            std::cout << "Server [" << i << "] running ping-pong test"
-                      << std::endl;
-
-            for (int j = 0; j < count; j++) {
-              auto recv_s = conn->Receive();
-              if (!recv_s.ok()) {
-                std::cerr << "Error receiving ping: " << recv_s.status()
-                          << std::endl;
-                return 1;
-              }
-
-              // Print message info
-              std::cout << "Server [" << i << "] received ping #" << j + 1
+            auto bw_s = test_bw_recv(conn, count, size);
+            if (!bw_s.ok()) {
+              int cpu_num = sched_getcpu();
+              std::cerr << "[CPU: " << cpu_num
+                        << "] Error running benchmark: " << bw_s.status()
                         << std::endl;
-
-              // Try to print some bytes from the region structure itself
-              const auto &region = recv_s.value();
-              const void *addr = &region;
-              const unsigned char *bytes =
-                  static_cast<const unsigned char *>(addr);
-
-              // Print first few bytes
-              std::cout << "First 16 bytes: ";
-              for (int k = 0; k < 16; k++) {
-                std::cout << std::hex << std::setw(2) << std::setfill('0')
-                          << static_cast<int>(bytes[k]) << " ";
-              }
-              std::cout << std::dec << std::endl;
-
-              // Send pong reply
-              kym::connection::SendRegion send_region;
-              auto stat = conn->Send(send_region);
-              if (!stat.ok()) {
-                std::cerr << "Error sending pong: " << stat << std::endl;
-                return 1;
-              }
+              return 1;
+            }
+            m->push_back(bw_s.value());
+          } else if (lat) {
+            auto stat = test_lat_recv(conn, count);
+            if (!stat.ok()) {
+              std::cerr << "Error running benchmark: " << stat << std::endl;
+              return 1;
+            }
+          } else {
+            auto stat = test_lat_pong(conn, conn, count, size);
+            if (!stat.ok()) {
+              std::cerr << "Error running benchmark: " << stat << std::endl;
+              return 1;
             }
           }
           measurements[i] = m;
@@ -326,69 +188,20 @@ int main(int argc, char *argv[]) {
       set_core_affinity(1);
       if (bw) {
         std::vector<float> *m = new std::vector<float>();
-
-        // Single receiver bandwidth test with modified approach to print
-        // messages
-        std::cout << "Single receiver starting..." << std::endl;
-
-        // Use this buffer for copying and printing the message
-        char *print_buffer = new char[size];
-
-        int recvd = 0;
-        auto begin = std::chrono::high_resolution_clock::now();
-
-        int total_msgs = conn_count * count;
-        while (recvd < total_msgs) {
-          // Receive message
-          auto recv_s = ln->Receive();
-          if (!recv_s.ok()) {
-            delete[] print_buffer;
-            std::cerr << "Error receiving message: " << recv_s.status()
-                      << std::endl;
-            return 1;
-          }
-
-          // Print message info
-          std::cout << "Single receiver received message #" << recvd + 1
+        auto bw_s = test_bw_recv(ln, conn_count * count, size);
+        if (!bw_s.ok()) {
+          int cpu_num = sched_getcpu();
+          std::cerr << "[CPU: " << cpu_num
+                    << "] Error running benchmark: " << bw_s.status()
                     << std::endl;
-
-          // Try to print some bytes from the region structure itself
-          const auto &region = recv_s.value();
-          const void *addr = &region;
-          const unsigned char *bytes = static_cast<const unsigned char *>(addr);
-
-          // Print a hex dump of part of the memory where the region is stored
-          std::cout << "Memory dump of ReceiveRegion:" << std::endl;
-          for (int j = 0; j < 64; j++) {
-            if (j % 16 == 0) {
-              std::cout << std::endl
-                        << std::hex << std::setw(4) << std::setfill('0') << j
-                        << ": ";
-            }
-            std::cout << std::setw(2) << std::setfill('0')
-                      << static_cast<int>(bytes[j]) << " ";
-          }
-          std::cout << std::dec << std::endl;
-
-          // Increment received count
-          recvd++;
+          return 1;
         }
-
-        auto end = std::chrono::high_resolution_clock::now();
-        auto elapsed =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
-
-        uint64_t bytes = ((uint64_t)total_msgs) * ((uint64_t)size);
-        uint64_t nanos = elapsed.count();
-        uint64_t rate_bytes_per_ns = (bytes * 1000000000L) / nanos;
-
-        delete[] print_buffer;
-        m->push_back(rate_bytes_per_ns);
+        m->push_back(bw_s.value());
         measurements[0] = m;
       }
     }
 
-    for (size_t i = 0; i < workers.size(); i++) {
+    for (int i = 0; i < workers.size(); i++) {
       workers[i].join();
     }
     ln->Close();
@@ -407,7 +220,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < conn_count; i++) {
       auto conn_s = kym::connection::DialSendReceive(ip, 9999, src);
       if (!conn_s.ok()) {
-        std::cerr << "Error dialing send_receive connection "
+        std::cerr << "Error dialing send_receive co_nection"
                   << conn_s.status().message() << std::endl;
         return 1;
       }
@@ -416,8 +229,8 @@ int main(int argc, char *argv[]) {
         ae_thread = DebugTrailAsyncEvents(conn->GetEndpoint()->GetContext());
       }
       conns[i] = conn;
-      workers.push_back(std::thread([i, bw, lat, pingpong, conn, count, batch,
-                                     size, unack, limit, &measurements]() {
+      workers.push_back(std::thread([i, bw, lat, conn, count, batch, size,
+                                     unack, limit, &measurements]() {
         set_core_affinity(i + 2);
 
         std::chrono::milliseconds timespan(
@@ -463,7 +276,7 @@ int main(int argc, char *argv[]) {
             std::cerr << "Error running benchmark: " << stat << std::endl;
             return 1;
           }
-        } else if (pingpong) {
+        } else {
           // pingpong
           std::chrono::milliseconds timespan(
               1000); // This is because of a race condition...
@@ -483,7 +296,7 @@ int main(int argc, char *argv[]) {
         return 0;
       }));
     }
-    for (size_t i = 0; i < workers.size(); i++) {
+    for (int i = 0; i < workers.size(); i++) {
       workers[i].join();
     }
   }

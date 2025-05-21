@@ -9,12 +9,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <exception>
-#include <fstream>
 #include <infiniband/verbs.h>
-#include <iomanip> // For setw
 #include <iostream>
-#include <memory>
 #include <ostream>
 #include <string>
 #include <thread>
