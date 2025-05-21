@@ -1,0 +1,74 @@
+./bin/ringbuffer --server --address 12.12.12.1 --clients 3
+#### Message Counting Ring Buffer ####
+Server: Starting on 12.12.12.1
+Server: Expecting 3 clients
+Server: Buffer registered at 0x7f06b6c00010 size: 8388608 bytes
+Server: Waiting for client 1/3...
+Monitor: Started monitoring messages
+Monitor: Client 0 region: offset 0 to 2796202
+Monitor: Client 1 region: offset 2796202 to 5592404
+Monitor: Client 2 region: offset 5592404 to 8388608
+Server: Client 0 connected
+Server: Waiting for client 2/3...
+Server: Client 1 connected
+Server: Waiting for client 3/3...
+Server: Client 2 connected
+Server: All 3 clients connected
+Server: Initial buffer state (first 64 bytes):
+  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  ASCII: "................................................................"
+Server: Client 0 completed test
+  Signal content (first 64 bytes):
+  43 4f 4d 50 4c 45 54 45 00 00 00 00 64 00 00 00
+  43 6c 69 65 6e 74 20 30 20 73 65 6e 74 20 31 30
+  30 20 6d 65 73 73 61 67 65 73 00 ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ... (truncated)
+  ASCII: "COMPLETE....d...Client 0 sent 100 messages......................"
+  Client 0 reports sending 100 messages
+Server: Client 1 completed test
+  Signal content (first 64 bytes):
+  43 4f 4d 50 4c 45 54 45 01 00 00 00 64 00 00 00
+  43 6c 69 65 6e 74 20 31 20 73 65 6e 74 20 31 30
+  30 20 6d 65 73 73 61 67 65 73 00 ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ... (truncated)
+  ASCII: "COMPLETE....d...Client 1 sent 100 messages......................"
+  Client 1 reports sending 100 messages
+Server: Client 2 completed test
+  Signal content (first 64 bytes):
+  43 4f 4d 50 4c 45 54 45 02 00 00 00 64 00 00 00
+  43 6c 69 65 6e 74 20 32 20 73 65 6e 74 20 31 30
+  30 20 6d 65 73 73 61 67 65 73 00 ff ff ff ff ff
+  ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ... (truncated)
+  ASCII: "COMPLETE....d...Client 2 sent 100 messages......................"
+  Client 2 reports sending 100 messages
+Server: All clients completed their tests
+====== Message Statistics ======
+Total messages detected: 291
+Messages per client:
+  Client 0: 100 messages, rate: 105.932 msgs/sec
+  Client 1: 100 messages, rate: 105.932 msgs/sec
+  Client 2: 91 messages, rate: 107.059 msgs/sec
+================================
+Server: Final buffer state (first 64 bytes):
+  00 00 00 00 00 00 00 00 c6 a0 9e f4 96 01 00 00
+  41 00 00 00 00 00 00 00 41 4c 50 48 41 2d 4d 53
+  47 30 2d 41 00 00 00 00 00 00 00 00 00 00 00 00
+  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  ASCII: "................A.......ALPHA-MSG0-A............................"
+====== Message Count Verification ======
+Client-reported message counts:
+  Client 0: 100
+  Client 1: 100
+  Client 2: 100
+Total reported messages: 300
+Total detected messages: 291
+WARNING: Message count mismatch! Difference: 9
+========================================
+Server: Cleanup complete, exiting
+
